@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';  
 import { CCard, CCardBody, CCol, CRow, CFormSelect, CFormInput, CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell, CFormCheck, CButton } from '@coreui/react';
 import logo from '../../assets/images/logo.png';
 
 const Dashboard = () => {
+  const { t } = useTranslation();  
   const [startTime, setStartTime] = useState('08:00 AM');
   const [endTime, setEndTime] = useState('05:00 PM');
   const [employees, setEmployees] = useState(10);
   const [sales, setSales] = useState(1000);
-  const [hourlySales, setHourlySales] = useState({});  // To store sales per hour
-  const [breaks, setBreaks] = useState({});  // To track breaks
-  const [submissionMessage, setSubmissionMessage] = useState('');  // Message for submission feedback
+  const [hourlySales, setHourlySales] = useState({});  
+  const [breaks, setBreaks] = useState({});  
+  const [submissionMessage, setSubmissionMessage] = useState('');  
 
   const times = [
     '12:00 AM', '01:00 AM', '02:00 AM', '03:00 AM', '04:00 AM', '05:00 AM', '06:00 AM',
@@ -34,7 +36,6 @@ const Dashboard = () => {
 
   const filteredEndTimes = times.filter(time => convertToNumber(time) > convertToNumber(startTime));
 
-  // Create an array of hours between the selected startTime and endTime
   const selectedHours = times.filter(
     (time) => convertToNumber(time) >= convertToNumber(startTime) && convertToNumber(time) <= convertToNumber(endTime)
   );
@@ -51,16 +52,24 @@ const Dashboard = () => {
       ...prevBreaks,
       [hour]: isChecked,
     }));
+
+    // If checked, set sales to 0
+    if (isChecked) {
+      setHourlySales((prevSales) => ({
+        ...prevSales,
+        [hour]: 0,
+      }));
+    }
   };
 
   const handleSubmit = () => {
     const data = {
       startTime,
       endTime,
-      employees: parseInt(employees),  // Ensure this is an integer
-      dailySales: parseFloat(sales),    // Ensure this is a float
-      hourlySales,                       // This should be an object of sales per hour
-      breaks,                            // This should be an object of break times
+      employees: parseInt(employees),  
+      dailySales: parseFloat(sales),    
+      hourlySales,                       
+      breaks,                            
     };
 
     fetch('http://localhost:5000/submit-data', {
@@ -77,12 +86,10 @@ const Dashboard = () => {
         return response.json();
       })
       .then(data => {
-        setSubmissionMessage('Data saved successfully!'); // Feedback on success
-        // Optionally reset form fields or show a success message
+        setSubmissionMessage('Data saved successfully!'); 
       })
       .catch((error) => {
         console.error('Error:', error);
-        //setSubmissionMessage('Error saving data'); // Feedback on error
       });
   };
 
@@ -92,12 +99,11 @@ const Dashboard = () => {
         <CCol xs={12}>
           <CCard>
             <CCardBody className="text-center">
-              <h1>Client Data UI</h1>
-              <p>Welcome to the NetMx´s client data interface. Please help us by inputting the data below.</p>
+              <h1>{t('clientDataUI')}</h1>
+              <p>{t('welcomeMessage')}</p>
 
-              {/* Operating Hours Section */}
               <div className="mt-4">
-                <h5>Select Operating Hours</h5>
+                <h5>{t('selectOperatingHours')}</h5>
                 <CRow className="justify-content-center mt-3">
                   <CCol xs={4}>
                     <CFormSelect
@@ -124,22 +130,21 @@ const Dashboard = () => {
                           </option>
                         ))
                       ) : (
-                        <option>No available times</option>
+                        <option>{t('noAvailableTimes')}</option>
                       )}
                     </CFormSelect>
                   </CCol>
                 </CRow>
                 <div className="mt-4">
-                  <p>Operating Hours: {startTime} - {endTime}</p>
+                  <p>{t('operatingHours')}: {startTime} - {endTime}</p>
                 </div>
               </div>
 
-              {/* Number of Employees and Daily Sales */}
               <div className="mt-4">
-                <h5>Enter Daily Metrics</h5>
+                <h5>{t('enterDailyMetrics')}</h5>
                 <CRow className="justify-content-center mt-3">
                   <CCol xs={4}>
-                    <label htmlFor="employees">Number of Employees</label>
+                    <label htmlFor="employees">{t('numberOfEmployees')}</label>
                     <CFormInput
                       type="number"
                       id="employees"
@@ -149,7 +154,7 @@ const Dashboard = () => {
                     />
                   </CCol>
                   <CCol xs={4}>
-                    <label htmlFor="sales">Daily Sales ($)</label>
+                    <label htmlFor="sales">{t('dailySales')}</label>
                     <CFormInput
                       type="number"
                       id="sales"
@@ -160,20 +165,19 @@ const Dashboard = () => {
                   </CCol>
                 </CRow>
                 <div className="mt-4">
-                  <p>Employees: {employees}</p>
-                  <p>Daily Sales: ${sales}</p>
+                  <p>{t('employees')}: {employees}</p>
+                  <p>{t('dailySales')}: ${sales}</p>
                 </div>
               </div>
 
-              {/* Sales per Hour Table */}
               <div className="mt-4">
-                <h5>Sales Per Hour</h5>
+                <h5>{t('salesPerHour')}</h5>
                 <CTable responsive>
                   <CTableHead>
                     <CTableRow>
-                      <CTableHeaderCell>Hour</CTableHeaderCell>
-                      <CTableHeaderCell>Sales ($)</CTableHeaderCell>
-                      <CTableHeaderCell>In a Break</CTableHeaderCell>
+                      <CTableHeaderCell>{t('hour')}</CTableHeaderCell>
+                      <CTableHeaderCell>{t('sales')}</CTableHeaderCell>
+                      <CTableHeaderCell>{t('inBreak')}</CTableHeaderCell>
                     </CTableRow>
                   </CTableHead>
                   <CTableBody>
@@ -183,10 +187,11 @@ const Dashboard = () => {
                         <CTableDataCell>
                           <CFormInput
                             type="number"
-                            placeholder="Enter sales"
-                            value={hourlySales[hour] || ''}
+                            placeholder={breaks[hour] ? '0' : t('enterSales')}
+                            value={breaks[hour] ? 0 : hourlySales[hour] || ''}
                             onChange={(e) => handleHourlySalesChange(hour, e.target.value)}
                             min="0"
+                            disabled={breaks[hour]} // Disable input if break is checked
                           />
                         </CTableDataCell>
                         <CTableDataCell>
@@ -202,18 +207,16 @@ const Dashboard = () => {
                 </CTable>
               </div>
 
-              {/* Submit Button */}
               <div className="mt-4">
-                <CButton onClick={handleSubmit} color="primary">Submit</CButton>
+                <CButton onClick={handleSubmit} color="primary">{t('submit')}</CButton>
                 {submissionMessage && <p>{submissionMessage}</p>}
               </div>
 
-              {/* New Row for Logo */}
               <CRow className="justify-content-end mt-4">
                 <CCol xs={2} className="text-right">
                   <img
                     src={logo}
-                    alt="Company Logo"
+                    alt={t('companyLogo')}
                     style={{
                       width: '150px',
                       height: 'auto'
@@ -223,7 +226,7 @@ const Dashboard = () => {
               </CRow>
 
               <CRow className="justify-content-end mt-5">
-                <p>Your privacy is important to us. This data will not be shared with anyone.</p>
+                <p>{t('privacyMessage')}</p>
               </CRow>
 
             </CCardBody>
