@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react'
-import { NavLink } from 'react-router-dom'
-import { useSelector, useDispatch } from 'react-redux'
+import { useDispatch } from 'react-redux'
 import {
   CContainer,
   CDropdown,
@@ -10,29 +9,19 @@ import {
   CHeader,
   CHeaderNav,
   CHeaderToggler,
-  CNavLink,
-  CNavItem,
   useColorModes,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import {
-  cilBell,
-  cilContrast,
-  cilEnvelopeOpen,
-  cilList,
-  cilMenu,
-  cilMoon,
-  cilSun,
-} from '@coreui/icons'
+import { cilContrast, cilMoon, cilSun } from '@coreui/icons'
+import { useTranslation } from 'react-i18next'  // Import the hook for translations
 
 import { AppHeaderDropdown } from './header/index'
 
 const AppHeader = () => {
   const headerRef = useRef()
   const { colorMode, setColorMode } = useColorModes('coreui-free-react-admin-template-theme')
-
+  const { i18n } = useTranslation()  // Access i18n for changing language
   const dispatch = useDispatch()
-  
 
   useEffect(() => {
     document.addEventListener('scroll', () => {
@@ -41,6 +30,11 @@ const AppHeader = () => {
     })
   }, [])
 
+  // Function to change the language
+  const changeLanguage = (lng) => {
+    i18n.changeLanguage(lng)
+  }
+
   return (
     <CHeader position="sticky" className="mb-4 p-0" ref={headerRef}>
       <CContainer className="border-bottom px-4" fluid>
@@ -48,15 +42,17 @@ const AppHeader = () => {
           onClick={() => dispatch({ type: 'set', sidebarShow: !sidebarShow })}
           style={{ marginInlineStart: '-14px' }}
         >
-         
+          {/* Add any icon or button */}
         </CHeaderToggler>
         <CHeaderNav className="d-none d-md-flex">
-
+          {/* Optional additional content here */}
         </CHeaderNav>
         <CHeaderNav>
           <li className="nav-item py-1">
             <div className="vr h-100 mx-2 text-body text-opacity-75"></div>
           </li>
+
+          {/* Theme Switcher Dropdown */}
           <CDropdown variant="nav-item" placement="bottom-end">
             <CDropdownToggle caret={false}>
               {colorMode === 'dark' ? (
@@ -70,41 +66,75 @@ const AppHeader = () => {
             <CDropdownMenu>
               <CDropdownItem
                 active={colorMode === 'light'}
-                className="d-flex align-items-center"
-                as="button"
-                type="button"
                 onClick={() => setColorMode('light')}
               >
                 <CIcon className="me-2" icon={cilSun} size="lg" /> Light
               </CDropdownItem>
               <CDropdownItem
                 active={colorMode === 'dark'}
-                className="d-flex align-items-center"
-                as="button"
-                type="button"
                 onClick={() => setColorMode('dark')}
               >
                 <CIcon className="me-2" icon={cilMoon} size="lg" /> Dark
               </CDropdownItem>
               <CDropdownItem
                 active={colorMode === 'auto'}
-                className="d-flex align-items-center"
-                as="button"
-                type="button"
                 onClick={() => setColorMode('auto')}
               >
                 <CIcon className="me-2" icon={cilContrast} size="lg" /> Auto
               </CDropdownItem>
             </CDropdownMenu>
           </CDropdown>
+
           <li className="nav-item py-1">
             <div className="vr h-100 mx-2 text-body text-opacity-75"></div>
           </li>
+
+          {/* Language Switcher Dropdown */}
+          <CDropdown variant="nav-item" placement="bottom-end">
+            <CDropdownToggle caret={false}>
+              🌐 {/* Icon for Language */}
+            </CDropdownToggle>
+            <CDropdownMenu>
+              <CDropdownItem
+                active={i18n.language === 'en'}
+                onClick={() => changeLanguage('en')}
+              >
+                English
+              </CDropdownItem>
+              <CDropdownItem
+                active={i18n.language === 'es'}
+                onClick={() => changeLanguage('es')}
+              >
+                Español
+              </CDropdownItem>
+              <CDropdownItem
+                active={i18n.language === 'fr'}
+                onClick={() => changeLanguage('fr')}
+              >
+                Français
+              </CDropdownItem>
+              <CDropdownItem
+                active={i18n.language === 'pt'}
+                onClick={() => changeLanguage('pt')}
+              >
+                Português
+              </CDropdownItem>
+              <CDropdownItem
+                active={i18n.language === 'ct'}
+                onClick={() => changeLanguage('ct')}
+              >
+                Català
+              </CDropdownItem>
+            </CDropdownMenu>
+          </CDropdown>
+
+          <li className="nav-item py-1">
+            <div className="vr h-100 mx-2 text-body text-opacity-75"></div>
+          </li>
+
           <AppHeaderDropdown />
         </CHeaderNav>
       </CContainer>
-   
-        
     </CHeader>
   )
 }
