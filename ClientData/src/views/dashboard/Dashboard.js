@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CCard, CCardBody, CCol, CRow, CFormSelect, CFormInput, CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell, CFormCheck } from '@coreui/react';
+import { CCard, CCardBody, CCol, CRow, CFormSelect, CFormInput, CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell, CFormCheck, CButton } from '@coreui/react';
 import logo from '../../assets/images/logo.png';
 
 const Dashboard = () => {
@@ -9,6 +9,7 @@ const Dashboard = () => {
   const [sales, setSales] = useState(1000);
   const [hourlySales, setHourlySales] = useState({});  // To store sales per hour
   const [breaks, setBreaks] = useState({});  // To track breaks
+  const [submissionMessage, setSubmissionMessage] = useState('');  // Message for submission feedback
 
   const times = [
     '12:00 AM', '01:00 AM', '02:00 AM', '03:00 AM', '04:00 AM', '05:00 AM', '06:00 AM',
@@ -52,6 +53,39 @@ const Dashboard = () => {
     }));
   };
 
+  const handleSubmit = () => {
+    const data = {
+      startTime,
+      endTime,
+      employees: parseInt(employees),  // Ensure this is an integer
+      dailySales: parseFloat(sales),    // Ensure this is a float
+      hourlySales,                       // This should be an object of sales per hour
+      breaks,                            // This should be an object of break times
+    };
+
+    fetch('http://localhost:5000/submit-data', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then(data => {
+        setSubmissionMessage('Data saved successfully!'); // Feedback on success
+        // Optionally reset form fields or show a success message
+      })
+      .catch((error) => {
+        console.error('Error:', error);
+        //setSubmissionMessage('Error saving data'); // Feedback on error
+      });
+  };
+
   return (
     <div>
       <CRow>
@@ -64,7 +98,6 @@ const Dashboard = () => {
               {/* Operating Hours Section */}
               <div className="mt-4">
                 <h5>Select Operating Hours</h5>
-
                 <CRow className="justify-content-center mt-3">
                   <CCol xs={4}>
                     <CFormSelect
@@ -78,7 +111,6 @@ const Dashboard = () => {
                       ))}
                     </CFormSelect>
                   </CCol>
-
                   <CCol xs={4}>
                     <CFormSelect
                       value={endTime}
@@ -97,7 +129,6 @@ const Dashboard = () => {
                     </CFormSelect>
                   </CCol>
                 </CRow>
-
                 <div className="mt-4">
                   <p>Operating Hours: {startTime} - {endTime}</p>
                 </div>
@@ -106,7 +137,6 @@ const Dashboard = () => {
               {/* Number of Employees and Daily Sales */}
               <div className="mt-4">
                 <h5>Enter Daily Metrics</h5>
-
                 <CRow className="justify-content-center mt-3">
                   <CCol xs={4}>
                     <label htmlFor="employees">Number of Employees</label>
@@ -118,7 +148,6 @@ const Dashboard = () => {
                       min="1"
                     />
                   </CCol>
-
                   <CCol xs={4}>
                     <label htmlFor="sales">Daily Sales ($)</label>
                     <CFormInput
@@ -130,7 +159,6 @@ const Dashboard = () => {
                     />
                   </CCol>
                 </CRow>
-
                 <div className="mt-4">
                   <p>Employees: {employees}</p>
                   <p>Daily Sales: ${sales}</p>
@@ -140,13 +168,12 @@ const Dashboard = () => {
               {/* Sales per Hour Table */}
               <div className="mt-4">
                 <h5>Sales Per Hour</h5>
-
                 <CTable responsive>
                   <CTableHead>
                     <CTableRow>
                       <CTableHeaderCell>Hour</CTableHeaderCell>
                       <CTableHeaderCell>Sales ($)</CTableHeaderCell>
-                      <CTableHeaderCell>Change of shift</CTableHeaderCell>
+                      <CTableHeaderCell>In a Break</CTableHeaderCell>
                     </CTableRow>
                   </CTableHead>
                   <CTableBody>
@@ -173,6 +200,12 @@ const Dashboard = () => {
                     ))}
                   </CTableBody>
                 </CTable>
+              </div>
+
+              {/* Submit Button */}
+              <div className="mt-4">
+                <CButton onClick={handleSubmit} color="primary">Submit</CButton>
+                {submissionMessage && <p>{submissionMessage}</p>}
               </div>
 
               {/* New Row for Logo */}
