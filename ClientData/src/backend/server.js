@@ -1,57 +1,76 @@
 const express = require('express');
-const mysql = require('mysql2');
-const bodyParser = require('body-parser');
+const mysql = require('mysql');
 const cors = require('cors');
-
 const app = express();
-const port = 5000;
-
-// Middleware
+app.use(express.json());
 app.use(cors());
-app.use(bodyParser.json());
 
-// MySQL connection
+// MySQL connection setup
 const db = mysql.createConnection({
   host: 'localhost',
-  user: 'testerusernetmx',  // Your MySQL user
-  password: '1234',  // Your MySQL password
-  database: 'client_data'
+  user: 'testerusernetmx',
+  password: '1234',
+  database: 'pedestrian_traffic_db'
 });
 
+// Check MySQL connection
 db.connect(err => {
   if (err) {
-    console.log('Database connection error:', err);
-  } else {
-    console.log('Connected to MySQL database');
+    console.error('Database connection failed:', err);
+    process.exit(1); // Exit the process if the database connection fails
   }
+  console.log('Connected to MySQL database.');
 });
 
-// Endpoint to handle form submission
-app.post('/submit-data', (req, res) => {
-  const { startTime, endTime, employees, dailySales, hourlySales, breaks } = req.body;
+// Endpoint to submit client data
+app.post('/submit-client-data', (req, res) => {
+  console.log("Received client data:", req.body); // Log the received data
+  const { entryTimestamp, employees, dailySales, openingTime, closingTime } = req.body;
 
-  const query = `
-    INSERT INTO daily_metrics (start_time, end_time, employees, daily_sales, hourly_sales, breaks)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `;
+  // Validate incoming data
+  if (!entryTimestamp || !employees || !dailySales || !openingTime || !closingTime) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
 
-  db.query(query, [
-    startTime,
-    endTime,
-    employees,
-    dailySales,
-    JSON.stringify(hourlySales),
-    JSON.stringify(breaks)
-  ], (err, result) => {
+  const sql = 'INSERT INTO client (entry_timestamp, employees, daily_sales, opening_time, closing_time) VALUES (?, ?, ?, ?, ?)';
+  
+  db.query(sql, [entryTimestamp, employees, dailySales, openingTime, closingTime], (err, result) => {
     if (err) {
-      console.log(err);
-      res.status(500).send('Error saving data');
-    } else {
-      res.status(200).send('Data saved successfully');
+      console.error('Error inserting client data:', err); // Log the error
+      return res.status(500).json({ message: 'Failed to save client data', error: err.message }); // Send back a more descriptive error
     }
+    
+    res.json({ dailyDataId: result.insertId });  // Return the inserted `daily_data_id`
   });
 });
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+// Endpoint to submit hourly sales data
+app.post('/submit-hourly-sales', (req, res) => {
+  console.log("Received hourly sales data:", req.body); // Log the received data
+  const { hourlySales } = req.body;
+
+  // Validate incoming data
+  if (!hourlySales || !Array.isArray(hourlySales)) {
+    return res.status(400).json({ message: 'Invalid or missing hourly sales data' });
+  }
+
+  const sql = 'INSERT INTO hourly_sales (daily_data_id, hourly_timestamp, hourly_sales, breaks) VALUES ?';
+  
+  const values = hourlySales.map(({ dailyDataId, hourlyTimestamp, hourlySales, breaks }) => [
+    dailyDataId, hourlyTimestamp, hourlySales, breaks
+  ]);
+
+  db.query(sql, [values], (err, result) => {
+    if (err) {
+      console.error('Error inserting hourly sales data:', err); // Log the error
+      return res.status(500).json({ message: 'Failed to save hourly sales data', error: err.message }); // Send back a more descriptive error
+    }
+
+    res.json({ message: 'Hourly sales data inserted successfully' });
+  });
+});
+
+// Start the server
+app.listen(5000, () => {
+  console.log('Backend server is running on port 5000');
 });

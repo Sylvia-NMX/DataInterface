@@ -8,7 +8,7 @@ const Dashboard = () => {
   const [startTime, setStartTime] = useState('08:00 AM');
   const [endTime, setEndTime] = useState('05:00 PM');
   const [employees, setEmployees] = useState(10);
-  const [sales, setSales] = useState(1000);
+  const [dailySales, setSales] = useState(1000);
   const [hourlySales, setHourlySales] = useState({});  
   const [breaks, setBreaks] = useState({});  
   const [submissionMessage, setSubmissionMessage] = useState('');  
@@ -62,37 +62,84 @@ const Dashboard = () => {
     }
   };
 
-  const handleSubmit = () => {
-    const data = {
-      startTime,
-      endTime,
-      employees: parseInt(employees),  
-      dailySales: parseFloat(sales),    
-      hourlySales,                       
-      breaks,                            
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+  
+    // Convert the entry timestamp to a compatible format
+    const entryTimestampFormatted = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  
+    // Function to convert 12-hour format to 24-hour format
+    const convertTo24Hour = (time) => {
+      const [timePart, modifier] = time.split(' ');
+      let [hours, minutes] = timePart.split(':');
+      if (modifier === 'PM' && hours !== '12') {
+        hours = parseInt(hours, 10) + 12;
+      }
+      if (modifier === 'AM' && hours === '12') {
+        hours = '00';
+      }
+      return `${hours}:${minutes}:00`; // Return in HH:MM:SS format
     };
-
-    fetch('http://localhost:5000/submit-data', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        return response.json();
-      })
-      .then(data => {
-        setSubmissionMessage('Data saved successfully!'); 
-      })
-      .catch((error) => {
-        console.error('Error:', error);
+  
+    // Convert opening and closing time to 24-hour format
+    const openingTime24 = convertTo24Hour(startTime);
+    const closingTime24 = convertTo24Hour(endTime);
+  
+    const clientData = {
+      entryTimestamp: entryTimestampFormatted, // Use the formatted timestamp
+      employees,
+      dailySales,
+      openingTime: openingTime24,
+      closingTime: closingTime24,
+    };
+  
+    try {
+      // Submit client data
+      const response = await fetch('http://localhost:5000/submit-client-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(clientData),
       });
+  
+      if (!response.ok) {
+        throw new Error('Failed to submit client data');
+      }
+  
+      const data = await response.json();
+      const dailyDataId = data.dailyDataId; // Capture the returned ID
+  
+      // Prepare hourly sales data using the returned daily_data_id
+      const hourlySalesData = Object.entries(hourlySales).map(([hour, hourlySales]) => ({
+        dailyDataId: dailyDataId, // Use the captured ID
+        hourlyTimestamp: convertTo24Hour(hour), // Make sure to provide the correct hour
+        hourlySales: hourlySales,
+        breaks: breaks[hour] || false,
+      }));
+  
+      // Submit hourly sales data
+      const hourlyResponse = await fetch('http://localhost:5000/submit-hourly-sales', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ hourlySales: hourlySalesData }),
+      });
+  
+      if (!hourlyResponse.ok) {
+        throw new Error('Failed to submit hourly sales data');
+      }
+  
+      // Handle success (e.g., show a success message, reset the form, etc.)
+      console.log('Data submitted successfully!');
+    } catch (error) {
+      console.error('Error:', error);
+      // Handle errors appropriately (e.g., show an error message)
+    }
   };
-
+  
+  
   return (
     <div>
       <CRow>
@@ -158,7 +205,7 @@ const Dashboard = () => {
                     <CFormInput
                       type="number"
                       id="sales"
-                      value={sales}
+                      value={dailySales}
                       onChange={(e) => setSales(e.target.value)}
                       min="0"
                     />
@@ -166,7 +213,7 @@ const Dashboard = () => {
                 </CRow>
                 <div className="mt-4">
                   <p>{t('employees')}: {employees}</p>
-                  <p>{t('dailySales')}: ${sales}</p>
+                  <p>{t('dailySales')}: ${dailySales}</p>
                 </div>
               </div>
 
