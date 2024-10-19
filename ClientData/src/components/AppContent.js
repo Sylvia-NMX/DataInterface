@@ -5,6 +5,8 @@ import { CContainer, CSpinner } from '@coreui/react'
 // routes config
 import routes from '../routes'
 
+// Main content
+//This component is responsible for rendering the main content of the application.
 const AppContent = () => {
   return (
     <CContainer className="px-4" lg>
@@ -29,5 +31,5 @@ const AppContent = () => {
     </CContainer>
   )
 }
-
+//Redirect to the dashboard if the user navigates to the root URL
 export default React.memo(AppContent)
