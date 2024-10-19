@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react'
 import { useDispatch } from 'react-redux'
-import {
+import { // Import the components from the coreui library that are needed
   CContainer,
   CDropdown,
   CDropdownItem,
@@ -15,14 +15,15 @@ import CIcon from '@coreui/icons-react'
 import { cilContrast, cilMoon, cilSun } from '@coreui/icons'
 import { useTranslation } from 'react-i18next'  // Import the hook for translations
 
-import { AppHeaderDropdown } from './header/index'
+import { AppHeaderDropdown } from './header/index' // Import the AppHeaderDropdown component
 
 const AppHeader = () => {
   const headerRef = useRef()
-  const { colorMode, setColorMode } = useColorModes('coreui-free-react-admin-template-theme')
+  const { colorMode, setColorMode } = useColorModes('coreui-free-react-admin-template-theme')// Access the color mode
   const { i18n } = useTranslation()  // Access i18n for changing language
   const dispatch = useDispatch()
 
+  // Function to toggle the shadow of the header
   useEffect(() => {
     document.addEventListener('scroll', () => {
       headerRef.current &&
@@ -35,6 +36,7 @@ const AppHeader = () => {
     i18n.changeLanguage(lng)
   }
 
+  // Function to render the header
   return (
     <CHeader position="sticky" className="mb-4 p-0" ref={headerRef}>
       <CContainer className="border-bottom px-4" fluid>
@@ -45,7 +47,6 @@ const AppHeader = () => {
           {/* Add any icon or button */}
         </CHeaderToggler>
         <CHeaderNav className="d-none d-md-flex">
-          {/* Optional additional content here */}
         </CHeaderNav>
         <CHeaderNav>
           <li className="nav-item py-1">
