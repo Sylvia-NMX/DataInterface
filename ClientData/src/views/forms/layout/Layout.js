@@ -14,7 +14,6 @@ import {
   CInputGroupText,
   CRow,
 } from '@coreui/react'
-import { DocsExample } from 'src/components'
 
 const Layout = () => {
   return (
