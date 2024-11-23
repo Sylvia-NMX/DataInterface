@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';  // Import the useTranslation hook
 import { CCard, CCardBody, CCol, CRow, CFormSelect, CFormInput, CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell, CFormCheck, CButton } from '@coreui/react';
 import logo from '../../assets/images/logo.png'; // Import the logo image
+import CryptoJS from 'crypto-js';
+import generateHmacSignature from '../../assets/generateHmacSignature';
 
 const Dashboard = () => {
   const { t } = useTranslation();  // Access the t function to translate text
@@ -66,13 +68,18 @@ const Dashboard = () => {
     }
   };
 
-  const handleSubmit = async (event) => {// Function to handle form submission in order to send data to MySQL
+
+
+
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
   
-    // Convert the entry timestamp to a compatible format
-    const entryTimestampFormatted = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    const secretKey = 'BagvFPQmNlG3JyfY9iXiBcweGJ55/byjrqXEz55OpBQ='; // Use the same secret key as in app.py
   
-    // Function to convert 12-hour format to 24-hour format
+    // Convert the entry timestamp to a compatible format
+    const entryTimestampFormatted = new Date().toISOString().slice(0, 10); 
+    console.log('Entry Timestamp:', entryTimestampFormatted);
     const convertTo24Hour = (time) => {
       const [timePart, modifier] = time.split(' ');
       let [hours, minutes] = timePart.split(':');
@@ -85,63 +92,105 @@ const Dashboard = () => {
       return `${hours}:${minutes}:00`; // Return in HH:MM:SS format
     };
   
-    // Convert opening and closing time to 24-hour format
     const openingTime24 = convertTo24Hour(startTime);
     const closingTime24 = convertTo24Hour(endTime);
   
-    const clientData = {
-      entryTimestamp: entryTimestampFormatted, // Use the formatted timestamp
-      employees,
-      dailySales,
-      openingTime: openingTime24,
-      closingTime: closingTime24,
-    };
+    const clientData = [
+      {
+          "entry_timestamp": entryTimestampFormatted,
+          "employees": employees,
+          "daily_sales": dailySales,
+          "opening_time": openingTime24,
+          "closing_time": closingTime24
+      }
+  ];
   
     try {
-      // Submit client data
-      const response = await fetch('http://localhost:5000/submit-client-data', {
+      // Generate a timestamp
+      const timestamp = Math.floor(Date.now() / 1000);
+      console.log('Timestamp:', timestamp);
+      // Generate HMAC signature
+      const payload = JSON.stringify(clientData);
+      const method = 'POST';  // HTTP method (e.g., POST)
+      const endpoint = '/clients/batch';  // API endpoint (e.g., /clients/batch)
+
+      // Generate the HMAC signature
+      const hmacSignature = generateHmacSignature(method, endpoint, timestamp, payload);
+      console.log('HMAC Signature:', hmacSignature);
+      // Submit client data to EC2 API
+      const response = await fetch('http://3.85.230.15:5000/clients/batch', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-Signature': hmacSignature, // Add HMAC signature to headers
+          'X-Timestamp': timestamp,    // Add timestamp to headers
         },
-        body: JSON.stringify(clientData),
+        body: payload,
       });
   
       if (!response.ok) {
-        throw new Error('Failed to submit client data');// Handle errors so the user knows what went wrong
+        throw new Error('Failed to submit client data');
       }
-  
-      const data = await response.json();
-      const dailyDataId = data.dailyDataId; // Capture the returned ID
+      const responseData = await response.json();
+      console.log("API response for client batch:", responseData);
+
+      
+      //GET all the info from /clients
+      const hmacGET = generateHmacSignature('GET', '/clients', timestamp, '');
+      const clientResponse = await fetch('http://3.85.230.15:5000/clients', {
+        method: 'GET',
+        headers: {
+          'X-Signature': hmacGET, // Add HMAC signature to headers
+          'X-Timestamp': timestamp,    // Add timestamp to headers
+        },
+      });
+
+      //print the GET response
+      console.log("API response for client batch:", clientResponse);
+
+      //GET the daily_data_id from the response
+      const clientDataResponse = await clientResponse.json();
+      const dailyDataId = clientDataResponse[0].daily_data_id;
+      console.log("Daily Data ID:", dailyDataId);
+
+      //GET the last daily_data_id from the response
+      const lastDailyDataId = clientDataResponse[clientDataResponse.length - 1].daily_data_id;
+      console.log("Last Daily Data ID:", lastDailyDataId);
+
   
       // Prepare hourly sales data using the returned daily_data_id
-      const hourlySalesData = Object.entries(hourlySales).map(([hour, hourlySales]) => ({
-        dailyDataId: dailyDataId, // Use the captured ID
-        hourlyTimestamp: convertTo24Hour(hour), // Make sure to provide the correct hour
-        hourlySales: hourlySales, // Use the sales value
-        breaks: breaks[hour] || false,// Use the break status
-      }));
+const hourlySalesData = Object.entries(hourlySales).map(([hour, hourlySalesValue]) => ({
+  daily_data_id: lastDailyDataId, // Use the ID obtained from /clients/batch
+  hourly_timestamp: convertTo24Hour(hour), // Convert to HH:MM:SS format
+  hourly_sales: parseFloat(hourlySalesValue).toFixed(2), // Convert to number and format with 2 decimal places
+  breaks: Boolean(breaks[hour]), // Ensure boolean value for breaks
+}));
+  
+      // Generate HMAC for hourly sales
+      const hourlyPayload = JSON.stringify(hourlySalesData);
+      const hourlyHmac = CryptoJS.HmacSHA256(`${timestamp}${hourlyPayload}`, secretKey).toString(CryptoJS.enc.Hex);
   
       // Submit hourly sales data
-      const hourlyResponse = await fetch('http://localhost:5000/submit-hourly-sales', {
+      const hourlyResponse = await fetch('http://3.85.230.15:5000/hourly_sales/batch', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-Signature': hourlyHmac,
+          'X-Timestamp': timestamp,
         },
-        body: JSON.stringify({ hourlySales: hourlySalesData }),
+        body: hourlyPayload,
       });
   
       if (!hourlyResponse.ok) {
         throw new Error('Failed to submit hourly sales data');
       }
   
-    
       console.log('Data submitted successfully!');
     } catch (error) {
       console.error('Error:', error);
-      
     }
   };
+  
   
   // Render the dashboard UI
   return (
