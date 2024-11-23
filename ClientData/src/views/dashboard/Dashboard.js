@@ -5,6 +5,7 @@ import logo from '../../assets/images/logo.png'; // Import the logo image
 import CryptoJS from 'crypto-js';
 import generateHmacSignature from '../../assets/generateHmacSignature';
 
+//create the dashboard component
 const Dashboard = () => {
   const { t } = useTranslation();  // Access the t function to translate text
   // Define the state variables, set the default values
@@ -16,7 +17,7 @@ const Dashboard = () => {
   const [breaks, setBreaks] = useState({});  
   const [submissionMessage, setSubmissionMessage] = useState('');  
 
-  // Define the available times in 12-hour format
+  // Define the available times in 12-hour format, that will be used in the dropdown menu
   const times = [
     '12:00 AM', '01:00 AM', '02:00 AM', '03:00 AM', '04:00 AM', '05:00 AM', '06:00 AM',
     '07:00 AM', '08:00 AM', '09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '01:00 PM',
@@ -68,18 +69,19 @@ const Dashboard = () => {
     }
   };
 
-
-
-
+//Function to manage the data and their submission
 
   const handleSubmit = async (event) => {
-    event.preventDefault();
+    event.preventDefault(); // Prevent the default form submission
   
-    const secretKey = 'BagvFPQmNlG3JyfY9iXiBcweGJ55/byjrqXEz55OpBQ='; // Use the same secret key as in app.py
+    const secretKey = 'BagvFPQmNlG3JyfY9iXiBcweGJ55/byjrqXEz55OpBQ='; // Secrect key from the app.py
   
     // Convert the entry timestamp to a compatible format
+    //The entrytimestamp is the current date of when the submission is made
     const entryTimestampFormatted = new Date().toISOString().slice(0, 10); 
-    console.log('Entry Timestamp:', entryTimestampFormatted);
+    //console.log('Entry Timestamp:', entryTimestampFormatted);
+
+    //Function to convert the time to 24-hour format
     const convertTo24Hour = (time) => {
       const [timePart, modifier] = time.split(' ');
       let [hours, minutes] = timePart.split(':');
@@ -91,10 +93,12 @@ const Dashboard = () => {
       }
       return `${hours}:${minutes}:00`; // Return in HH:MM:SS format
     };
-  
+    
+    // Convert the opening and closing times to 24-hour format
     const openingTime24 = convertTo24Hour(startTime);
     const closingTime24 = convertTo24Hour(endTime);
   
+    // Prepare the client data for submission
     const clientData = [
       {
           "entry_timestamp": entryTimestampFormatted,
@@ -104,19 +108,17 @@ const Dashboard = () => {
           "closing_time": closingTime24
       }
   ];
-  
+    //Start to submit the data to the API
     try {
       // Generate a timestamp
       const timestamp = Math.floor(Date.now() / 1000);
-      console.log('Timestamp:', timestamp);
+      //console.log('Timestamp:', timestamp);
+
       // Generate HMAC signature
       const payload = JSON.stringify(clientData);
-      const method = 'POST';  // HTTP method (e.g., POST)
-      const endpoint = '/clients/batch';  // API endpoint (e.g., /clients/batch)
+      const hmacSignature = generateHmacSignature('POST', '/clients/batch', timestamp, payload);
+      //console.log('HMAC Signature:', hmacSignature);
 
-      // Generate the HMAC signature
-      const hmacSignature = generateHmacSignature(method, endpoint, timestamp, payload);
-      console.log('HMAC Signature:', hmacSignature);
       // Submit client data to EC2 API
       const response = await fetch('http://3.85.230.15:5000/clients/batch', {
         method: 'POST',
@@ -129,10 +131,10 @@ const Dashboard = () => {
       });
   
       if (!response.ok) {
-        throw new Error('Failed to submit client data');
+        throw new Error('Failed to submit client data');//Throw an error if the submission fails
       }
-      const responseData = await response.json();
-      console.log("API response for client batch:", responseData);
+      //const responseData = await response.json();
+      //console.log("API response for client batch:", responseData);
 
       
       //GET all the info from /clients
@@ -159,17 +161,16 @@ const Dashboard = () => {
 
   
       // Prepare hourly sales data using the returned daily_data_id
-const hourlySalesData = Object.entries(hourlySales).map(([hour, hourlySalesValue]) => ({
-  daily_data_id: lastDailyDataId, // Use the ID obtained from /clients/batch
-  hourly_timestamp: convertTo24Hour(hour), // Convert to HH:MM:SS format
-  hourly_sales: parseFloat(hourlySalesValue).toFixed(2), // Convert to number and format with 2 decimal places
-  breaks: Boolean(breaks[hour]), // Ensure boolean value for breaks
-}));
-  
-      // Generate HMAC for hourly sales
+      const hourlySalesData = Object.entries(hourlySales).map(([hour, hourlySalesValue]) => ({
+      daily_data_id: lastDailyDataId, // Use the ID obtained from /clients/batch
+      hourly_timestamp: convertTo24Hour(hour), // Convert to HH:MM:SS format
+      hourly_sales: parseFloat(hourlySalesValue).toFixed(2), // Convert to number and format with 2 decimal places
+      breaks: Boolean(breaks[hour]), // Ensure boolean value for breaks
+      }));
+
       const hourlyPayload = JSON.stringify(hourlySalesData);
-      const hourlyHmac = CryptoJS.HmacSHA256(`${timestamp}${hourlyPayload}`, secretKey).toString(CryptoJS.enc.Hex);
-  
+      // Generate HMAC for hourly sales data
+      const hourlyHmac = generateHmacSignature('POST', '/hourly_sales/batch', timestamp, hourlyPayload);
       // Submit hourly sales data
       const hourlyResponse = await fetch('http://3.85.230.15:5000/hourly_sales/batch', {
         method: 'POST',
@@ -182,17 +183,17 @@ const hourlySalesData = Object.entries(hourlySales).map(([hour, hourlySalesValue
       });
   
       if (!hourlyResponse.ok) {
-        throw new Error('Failed to submit hourly sales data');
+        throw new Error('Failed to submit hourly sales data');//Throw an error if the submission fails
       }
   
-      console.log('Data submitted successfully!');
+      console.log('Data submitted successfully!'); // Log a success message if all data is submitted successfully
     } catch (error) {
       console.error('Error:', error);
     }
   };
   
   
-  // Render the dashboard UI
+  // Render the dashboard UI ---------------------------------------------
   return (
     <div>
       <CRow>
