@@ -74,7 +74,8 @@ const Dashboard = () => {
   const handleSubmit = async (event) => {
     event.preventDefault(); // Prevent the default form submission
   
-    const secretKey = 'BagvFPQmNlG3JyfY9iXiBcweGJ55/byjrqXEz55OpBQ='; // Secrect key from the app.py
+    console.log( process.env.REACT_APP_API_BASE_URL); //get the API base URL from the environment variables
+
   
     // Convert the entry timestamp to a compatible format
     //The entrytimestamp is the current date of when the submission is made
@@ -120,7 +121,7 @@ const Dashboard = () => {
       //console.log('HMAC Signature:', hmacSignature);
 
       // Submit client data to EC2 API
-      const response = await fetch('http://3.85.230.15:5000/clients/batch', {
+      const response = await fetch('${API_BASE_URL}/clients/batch', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -139,7 +140,7 @@ const Dashboard = () => {
       
       //GET all the info from /clients
       const hmacGET = generateHmacSignature('GET', '/clients', timestamp, '');
-      const clientResponse = await fetch('http://3.85.230.15:5000/clients', {
+      const clientResponse = await fetch('${API_BASE_URL}/clients', {
         method: 'GET',
         headers: {
           'X-Signature': hmacGET, // Add HMAC signature to headers
@@ -172,7 +173,7 @@ const Dashboard = () => {
       // Generate HMAC for hourly sales data
       const hourlyHmac = generateHmacSignature('POST', '/hourly_sales/batch', timestamp, hourlyPayload);
       // Submit hourly sales data
-      const hourlyResponse = await fetch('http://3.85.230.15:5000/hourly_sales/batch', {
+      const hourlyResponse = await fetch('${API_BASE_URL}/hourly_sales/batch', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

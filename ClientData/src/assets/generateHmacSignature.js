@@ -1,7 +1,7 @@
 import CryptoJS from 'crypto-js';
 
 // Your base64-encoded HMAC secret key
-const HMAC_SECRET_KEY_BASE64 = 'BagvFPQmNlG3JyfY9iXiBcweGJ55/byjrqXEz55OpBQ=';
+const HMAC_SECRET_KEY_BASE64 = process.env.REACT_APP_HMAC_SECRET_KEY;
 
 // Decode the base64 key to use in CryptoJS
 const HMAC_SECRET_KEY = CryptoJS.enc.Base64.parse(HMAC_SECRET_KEY_BASE64);
